@@ -1,0 +1,28 @@
+\contentsline {section}{\numberline {1}Revision History}{3}{section.1}
+\contentsline {section}{\numberline {2}Introduction}{4}{section.2}
+\contentsline {subsection}{\numberline {2.1}Assumptions}{5}{subsection.2.1}
+\contentsline {section}{\numberline {3}List of requirements}{6}{section.3}
+\contentsline {subsection}{\numberline {3.1}Sensors}{6}{subsection.3.1}
+\contentsline {subsection}{\numberline {3.2}Signals}{6}{subsection.3.2}
+\contentsline {subsection}{\numberline {3.3}Bell}{7}{subsection.3.3}
+\contentsline {subsection}{\numberline {3.4}Barriers}{7}{subsection.3.4}
+\contentsline {subsection}{\numberline {3.5}Deadlock}{7}{subsection.3.5}
+\contentsline {section}{\numberline {4}List of external actions}{8}{section.4}
+\contentsline {section}{\numberline {5}Requirements expressed in terms of actions}{9}{section.5}
+\contentsline {subsection}{\numberline {5.1}Sensors}{9}{subsection.5.1}
+\contentsline {subsection}{\numberline {5.2}Signals}{9}{subsection.5.2}
+\contentsline {subsection}{\numberline {5.3}Bell}{10}{subsection.5.3}
+\contentsline {subsection}{\numberline {5.4}Barriers}{10}{subsection.5.4}
+\contentsline {subsection}{\numberline {5.5}Deadlock}{10}{subsection.5.5}
+\contentsline {section}{\numberline {6}Architecture}{11}{section.6}
+\contentsline {section}{\numberline {7}List of internal actions}{12}{section.7}
+\contentsline {section}{\numberline {8}Requirements expressed in modal formulas}{13}{section.8}
+\contentsline {subsection}{\numberline {8.1}Sensors}{13}{subsection.8.1}
+\contentsline {subsection}{\numberline {8.2}Signals}{13}{subsection.8.2}
+\contentsline {subsection}{\numberline {8.3}Bell}{14}{subsection.8.3}
+\contentsline {subsection}{\numberline {8.4}Barriers}{15}{subsection.8.4}
+\contentsline {subsection}{\numberline {8.5}Deadlock}{15}{subsection.8.5}
+\contentsline {section}{\numberline {9}Verification}{16}{section.9}
+\contentsline {section}{\numberline {10}Conclusions}{17}{section.10}
+\contentsline {section}{\numberline {11}References}{17}{section.11}
+\contentsline {section}{\numberline {12}System Model}{18}{section.12}

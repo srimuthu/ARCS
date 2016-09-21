@@ -1,0 +1,353 @@
+sort
+	BarrierState = struct OPEN?isOpen|CLOSE?isClosed;		
+	
+	SignalState = struct GREEN?isGreen|YELLOW?isYellow|RED?isRed;
+	
+	BellState = struct BELL_ON?isBellOn|BELL_OFF?isBellOff;
+	
+	WarnLightState = struct W_LOW?isWarnLow|W_HIGH?isWarnHigh|W_OFF?isWarnOff;
+
+	TrainSensor = struct LEFT|ARRIVE|BREAK;
+
+	TrainStateControl = struct NOTRAIN?isnoTrain|ARRIVE1?isArriving1|ARRIVE2?isArriving2|TRAIN1?isTrain1|TRAIN2?isTrain2|LEFTALL?isLeftAll|BROKEN?isSensBroken;
+
+	DecisionTime = struct time1|time2|time3|time4|notime|t0|t1|t2|t3|t4|t5;
+	
+	TrainNo = Int;
+
+	Speed = struct noSpeed|s0|s1|s2|s3|s4|s5;
+	
+map 
+	SpeedToTime:Speed->DecisionTime;
+	MaxTrains:Nat;
+
+
+	
+eqn
+	SpeedToTime(noSpeed)=notime;
+	SpeedToTime(s0)=t0;
+	SpeedToTime(s1)=t1;
+	SpeedToTime(s2)=t2;
+	SpeedToTime(s3)=t3;
+	SpeedToTime(s4)=t4;
+	SpeedToTime(s5)=t5;
+	MaxTrains = 4;
+
+act	
+	
+	%% External actions  ARCS-TRAIN
+	
+	eActTrainSensData : TrainSensor#TrainNo;
+	RESET;
+	RESET_COMPLETE;
+	MANUAL_FIX;
+	eActGetSpeed:Speed;		
+
+	
+	%% External actions  ARCS-BARRIER
+	
+	eActSetBarrier : BarrierState;
+	
+	
+	%%External actions  ARCS-SIGN
+	
+	eActSetBell : BellState;
+	eActSetSignal : SignalState;
+	eActSetWarnLight : WarnLightState;
+	
+	
+	%% External action for Time expiration
+	
+	eActTime : DecisionTime;
+	
+	
+	%%Internal Actions TRAIN-BARRIER
+		
+	iActSendTrainsLeft,iActReceiveTrainsLeft;
+	iActSendResetBarrier,iActReceiveResetBarrier;
+	iActRecBarrierClose,iActSendBarrierClose;
+	
+
+	%%Internal Actions TRAIN-SIGNALS
+	
+	iActSendTrainArrive,iActRecTrainArrive;	
+	iActRecBreakSignals,iActSendBreakSignals;	
+	iActSendSignGreen,iActRecSignGreen;
+	
+	
+	%%Internal Actions BARRIER-SIGNALS
+
+	iActSendBarrierOpen,iActReceiveBarrierOpen;
+	iActSendTimeBarrier:DecisionTime; 
+	iActReceiveTimeBarrier:DecisionTime;	
+
+		
+	%% Multiactions
+	
+	iActTimeBarrier : DecisionTime; 
+	iActTrainsLeft;
+	iActResetBarrier;
+	iActBarrierOpen;
+	iActBarrierClose;
+	iActSignGreen;
+	iActTrainArrive;
+	iActBreakSignals;
+			
+
+proc
+	%% ---------ARCS-TRAIN ----------------------------
+	ARCS_TRAIN (trainState:TrainStateControl,BarrierClosed:Bool,TrainNo:Int,Speed:Speed) = 
+
+	(isnoTrain(trainState))->(
+		
+		(BarrierClosed)->(
+			eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(ARRIVE1,BarrierClosed,TrainNo+1,noSpeed)
+			+
+			iActRecSignGreen.ARCS_TRAIN(NOTRAIN,false,TrainNo,noSpeed)
+			+
+			eActTrainSensData(BREAK, -1).iActRecSignGreen.ARCS_TRAIN(BROKEN,false,TrainNo,noSpeed)
+		
+		)
+		<>(
+			eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(ARRIVE1,BarrierClosed,TrainNo+1,noSpeed)
+			+
+			eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+		)
+	)	
+	+
+	(isArriving1(trainState))->(
+		
+		(BarrierClosed)->(		
+			iActRecSignGreen.ARCS_TRAIN(ARRIVE1,false,TrainNo,noSpeed)
+			+
+			eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(ARRIVE2,BarrierClosed,TrainNo+1,noSpeed)
+			+
+			eActTrainSensData(BREAK, -1).iActRecSignGreen.ARCS_TRAIN(BROKEN,false,TrainNo,noSpeed)
+		)
+		<>( 
+			eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+			+
+			eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(ARRIVE2,BarrierClosed,TrainNo+1,noSpeed)
+			+ 		
+			sum speed1:Speed.(eActGetSpeed(speed1).(
+				eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+				+
+				eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(ARRIVE2,BarrierClosed,TrainNo+1,speed1)
+				+
+				eActTime(SpeedToTime(speed1)).(
+						eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+						+
+						eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(ARRIVE2,BarrierClosed,TrainNo+1,noSpeed)
+						+
+						iActSendTrainArrive.ARCS_TRAIN(TRAIN1,BarrierClosed,TrainNo,noSpeed)
+				)
+			)	
+			)								          			
+		)
+	)	
+	+	
+	(isTrain1(trainState))->(
+		
+		(BarrierClosed)->(
+			eActTrainSensData(LEFT,TrainNo-1).ARCS_TRAIN(LEFTALL,BarrierClosed,TrainNo-1,noSpeed)
+			+
+			eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+			+
+			eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo+1,noSpeed)
+		)
+		
+		<>(
+			eActTrainSensData(BREAK, -1).iActRecBarrierClose.ARCS_TRAIN(BROKEN,true,TrainNo,noSpeed)
+			+
+			eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo+1,noSpeed)
+			+
+			iActRecBarrierClose.ARCS_TRAIN(TRAIN1,true,TrainNo,noSpeed)
+		)		
+	)	
+	+
+	(isArriving2(trainState))->(		
+		
+		(BarrierClosed)->( 
+				eActTrainSensData(BREAK, -1).iActRecSignGreen.ARCS_TRAIN(BROKEN,false,TrainNo,noSpeed)
+				+
+				iActRecSignGreen.(
+						eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,false,TrainNo,noSpeed)
+						+
+						iActSendTrainArrive.ARCS_TRAIN(TRAIN2,false,TrainNo,noSpeed)
+				)
+			
+		)
+		<>(
+			(Speed==noSpeed)->(
+				eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+				+
+				iActSendTrainArrive.ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo,noSpeed)
+			)
+			<>(
+				eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+				+
+				eActTime(SpeedToTime(Speed)).(
+							iActSendTrainArrive.ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo,noSpeed)
+							+
+							eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+				)
+				+
+				sum speed2:Speed.(eActGetSpeed(speed2).(
+								eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+								+
+								eActTime(SpeedToTime(Speed)).(
+											iActSendTrainArrive.ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo,noSpeed)
+											+
+											eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+								)
+								+
+								eActTime(SpeedToTime(speed2)).(
+											eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+											+
+											iActSendTrainArrive.ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo,noSpeed)
+								)				
+								)
+				)
+
+			)
+					
+		)
+	)
+	+
+	(isTrain2(trainState))->(
+		
+		(BarrierClosed)->( 
+				(TrainNo==2)->(
+						eActTrainSensData(LEFT,TrainNo-1).ARCS_TRAIN(TRAIN1,BarrierClosed,TrainNo-1,noSpeed)
+						+	
+						eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+						+
+						eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo+1,noSpeed)				
+				)
+				<>(	
+						(TrainNo==MaxTrains)->(
+							eActTrainSensData(LEFT,TrainNo-1).ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo-1,noSpeed)
+							+
+							eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+						)
+						<>(
+						
+							eActTrainSensData(LEFT,TrainNo-1).ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo-1,noSpeed)
+							+	
+							eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+							+
+							eActTrainSensData(ARRIVE,TrainNo+1).ARCS_TRAIN(TRAIN2,BarrierClosed,TrainNo+1,noSpeed)
+						)
+				
+				)
+					
+					
+		)
+		<>(
+			eActTrainSensData(BREAK, -1).iActRecBarrierClose.ARCS_TRAIN(BROKEN,true,TrainNo,noSpeed)
+			+
+			iActRecBarrierClose.ARCS_TRAIN(TRAIN2,true,TrainNo,noSpeed)
+		)
+	)
+	+
+	(isLeftAll(trainState))->(
+		
+		iActSendTrainsLeft.ARCS_TRAIN(NOTRAIN,BarrierClosed,TrainNo,noSpeed) 
+		+
+		eActTrainSensData(BREAK, -1).ARCS_TRAIN(BROKEN,BarrierClosed,TrainNo,noSpeed)
+	)
+	+
+	(isSensBroken(trainState))->
+
+	(BarrierClosed)->
+		MANUAL_FIX.RESET.iActSendResetBarrier.iActRecSignGreen.RESET_COMPLETE.ARCS_TRAIN(NOTRAIN,false,0,noSpeed) 
+	<>
+		iActSendBreakSignals.iActRecBarrierClose.MANUAL_FIX.RESET.iActSendResetBarrier.iActRecSignGreen.RESET_COMPLETE.ARCS_TRAIN(NOTRAIN,false,0,noSpeed)
+	;
+
+
+%% ---------ARCS-BARRIER ----------------------------
+	ARCS_BARRIER(barState:BarrierState) = 
+
+	(isClosed(barState))->(
+		
+		iActReceiveTrainsLeft.eActSetBarrier(OPEN).eActTime(time3).iActSendBarrierOpen.ARCS_BARRIER(OPEN)
+		+
+		iActReceiveResetBarrier.eActSetBarrier(OPEN).eActTime(time3).iActSendBarrierOpen.ARCS_BARRIER(OPEN)
+	)
+	
+	+	
+
+	(isOpen(barState))->(
+
+		iActReceiveTimeBarrier(time2).eActSetBarrier(CLOSE).eActTime(time4).iActSendBarrierClose.ARCS_BARRIER(CLOSE)
+
+	);
+
+
+%% ---------ARCS-SIGN ---------------------------------
+
+
+	ARCS_SIGN(sigState: SignalState, warnState: WarnLightState, bellState: BellState) =
+	
+	(isGreen(sigState)&& isBellOff(bellState)&& isWarnOff(warnState))->(
+
+		iActRecTrainArrive.eActSetSignal(YELLOW).eActSetWarnLight(W_LOW).eActTime(time1).ARCS_SIGN(YELLOW,W_LOW,BELL_OFF)
+		+
+		iActRecBreakSignals.eActSetSignal(YELLOW).eActSetWarnLight(W_LOW).eActTime(time1).ARCS_SIGN(YELLOW,W_LOW,BELL_OFF)
+	)
+	
+	+
+
+	(isRed(sigState)&&isBellOn(bellState)&&isWarnHigh(warnState))->(
+		
+		iActReceiveBarrierOpen.eActSetWarnLight(W_OFF).eActSetBell(BELL_OFF).eActSetSignal(GREEN).iActSendSignGreen.ARCS_SIGN(GREEN,W_OFF,BELL_OFF)
+	)
+	
+	+
+
+	(isYellow(sigState)&&isBellOff(bellState)&&isWarnLow(warnState))->
+	
+		eActSetWarnLight(W_HIGH).eActSetBell(BELL_ON).eActSetSignal(RED).eActTime(time2).iActSendTimeBarrier(time2).ARCS_SIGN(RED,W_HIGH,BELL_ON);
+	
+	
+init
+	
+	allow(
+	
+
+	{
+	iActBarrierOpen,
+	iActResetBarrier,
+	iActTrainsLeft,
+	iActTimeBarrier,
+	iActBarrierClose,
+	iActSignGreen,
+	iActTrainArrive,
+	iActBreakSignals,
+	eActTrainSensData,
+	eActTime,
+	RESET,
+	MANUAL_FIX,
+	eActSetBarrier,
+	eActSetBell,
+	eActSetSignal,
+	eActGetSpeed,
+	eActSetWarnLight,
+	RESET_COMPLETE
+	},
+
+	comm(
+	
+	{iActSendTimeBarrier|iActReceiveTimeBarrier->iActTimeBarrier,
+	iActSendTrainsLeft|iActReceiveTrainsLeft->iActTrainsLeft,
+	iActSendResetBarrier|iActReceiveResetBarrier->iActResetBarrier,
+	iActSendBarrierClose|iActRecBarrierClose->iActBarrierClose,
+	iActSendSignGreen|iActRecSignGreen->iActSignGreen,
+	iActSendTrainArrive|iActRecTrainArrive->iActTrainArrive,
+	iActSendBreakSignals|iActRecBreakSignals->iActBreakSignals,
+	iActSendBarrierOpen|iActReceiveBarrierOpen->iActBarrierOpen
+	},
+	
+	ARCS_TRAIN(NOTRAIN,false,0,noSpeed)||ARCS_BARRIER(OPEN)||ARCS_SIGN(GREEN,W_OFF,BELL_OFF)
+	));

@@ -1,0 +1,657 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{graphicx}
+\usepackage{changepage}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{hyperref}
+
+\newcommand{\stopATP}{\texttt{stopATP} }
+\newcommand{\startATP}{\texttt{startATP} }
+\newcommand{\resetATP}{\texttt{resetATP} }
+\newcommand{\getSpeed}[1]{\texttt{getSpeed(#1)} }
+\newcommand{\getPulseFrequency}[1]{\texttt{getPulseFrequency(#1)} }
+\newcommand{\lightRed}{\texttt{lightRed} }
+\newcommand{\lightGreen}{\texttt{lightGreen} }
+\newcommand{\showSpeedLimit}[1]{\texttt{showSpeedLimit(#1)} }
+\newcommand{\timeOut}{\texttt{timeOut} }
+\newcommand{\bellOn}{\texttt{bellOn} }
+\newcommand{\bellOff}{\texttt{bellOff} }
+\newcommand{\brakesOn}{\texttt{brakesOn} }
+\newcommand{\brakesOff}{\texttt{brakesOff} }
+\newcommand{\transmitSpeedLimit}[1]{\texttt{transmitSpeedLimit(#1)} }
+\newcommand{\transmitRed}{\texttt{transmitRed} }
+\newcommand{\transmitGreen}{\texttt{transmitGreen} }
+
+\begin{document}
+\title{\Huge{\textbf{System Validation\\ Final Report\\[3cm]}}} % change later%
+
+\author{\LARGE{Gonzalo Moro P\'erez (0926033)}\\
+	\LARGE{Andr\'es Gunnarsson (0927231)}\\
+	\LARGE{Yiting Xu (0925537)}\\
+	\LARGE{Hanrong Zhou (0925762)}\\[5cm]
+	}
+
+\date{\Large{October 24th 2014\\}}
+
+\maketitle
+
+\newpage
+
+% Contents%
+
+\tableofcontents
+
+
+% Introductiong Section%
+
+\newpage
+
+
+\section{Introduction}
+
+This document describes a system called Automatic Train Protection (ATP) system. The purpose of the ATP system is to prevent train accidents by detecting the speed limit of the track, show it to the conductor and automatically stop the train if he does not react within a certain time frame. The current speed limit is detected in the form of a pulsed electric signal on the tracks. The frequency of the signal determines the speed limit according to a predefined table. The system also detects if there is a red light ahead and then stops the train. The train can then not continue until a green light is detected. \\
+\\
+The ATP system can be turned off and on with certain external signals. If the system is turned off, it should not show the conductor any speed limit, should not warn him of exceeding any limit and in particular should not stop the train under any circumstance. On the other hand, if the system is turned on, it should detect the speed limit and traffic lights, warn the conductor if he is going too fast and automatically brake if he does not react. \\
+\\
+In the following chapters, the requirements of the system will be set. The external actions of the system will be determined and the requirements will be expressed in terms of these actions. An overview of the different components in the system will be presented, as well as the internal actions between them. Finally, a model of the system will be developed and the requirements, which will be translated into modal formulas, will be checked.
+
+
+
+% List of requirement%
+
+
+\newpage
+
+\section{List of requirements}
+
+The list of general requirements specifying the behaviour of the system is:
+\begin{enumerate}
+	\item If the ATP is not turned on, it will not control the bell or the brakes of the train and it will not show any speed limit.
+	
+	\item The ATP will order to turn off the bell if the speed of the train is under or at the speed limit. Otherwise, it will order to turn on the bell.
+	
+	\item When the ATP detects a frequency, then the corresponding speed limit, or speed limit zero must be applied.
+	
+	\item The ATP will not show the speed limit as zero unless it has detected a red light before, and whenever a red traffic light is detected, the speed limit of the train will be set to zero.
+	
+	\item If the speed of the train does not get under the speed limit within a time limit after the bell started ringing, then the brakes must be applied. 
+
+    \item Once the brakes have been applied, they will not be released until the train is at a complete standstill and then only after the ATP is reset. 
+
+    \item If the ATP is reset and the train is at a complete standstill, then the bell must stop ringing and the brakes must be released. 
+		
+		\item Whenever the train is at a standstill, it is possible to reset.
+
+    \item At any time, it is possible within a finite number of steps to receive any frequency from the tracks and receive a red or green light signal. Also, as long as the system is on, it is possible to  read the current speed or a stop signal. At any time, as long as the system is off, it is possible receive a start signal.
+		
+		\item The system will not deadlock.
+   
+\end{enumerate}
+
+
+
+ 
+
+
+
+
+
+
+% List of external actions%
+
+
+\newpage
+
+
+\section{List of external actions}
+
+The following table shows all the external actions together with a short description:\\
+
+\begin{table}[!hbp]
+	\centering
+	\begin{adjustwidth}{-1.5cm}{}
+	\begin{tabular}{|c|l|l|c|}
+		
+		\hline
+		\textbf{No.} & \textbf{Name (data type)}&\textbf{Description} & \textbf{Direction} \\
+		\hline
+		1 & \startATP & ATP system is started & IN \\
+		\hline
+    	2 & \stopATP & ATP system is stoped & IN \\
+	    \hline
+		3 & \resetATP & ATP system is reset after emergency stop & IN \\
+		\hline
+	    4 & \getSpeed{Speed} & ATP system reads train speed & IN \\
+		\hline
+		5 & \getPulseFrequency{Freq} & ATP system reads signal from antenna & IN \\
+		\hline
+		6 & \lightRed & ATP system receives notification of red light & IN \\
+		\hline
+		7 & \lightGreen & ATP system receives notification of green light & IN \\
+		\hline
+		8 & \showSpeedLimit{Speed} & ATP system sends the current speed limit & OUT \\
+		\hline
+		9 & \bellOn & ATP system instructs bell to ring & OUT \\
+		\hline
+		10 & \bellOff & ATP system instructs bell to stop ringing & OUT \\
+		\hline
+		11 & \brakesOn & ATP system instructs brakes to be applied & OUT \\
+		\hline	
+		12 & \brakesOff & ATP system instructs brakes to be released & OUT \\
+		\hline
+				\end{tabular}
+				\end{adjustwidth}
+	\caption{List of external actions}
+\end{table}
+
+
+\setlength{\parindent}{0pt}
+
+The data types \textit{Speed} and \textit{Freq} will be used throughout the whole report. They are defined as follows:\\
+\\
+\textit{Speed = struct s0 $\mid$ s40 $\mid$ s60 $\mid$ s80 $\mid$ s100 $\mid$ s140;}
+\\
+\textit{Freq = struct f0 $\mid$ f40 $\mid$ f60 $\mid$ f80 $\mid$ f100 $\mid$ f140 $\mid$ specF;}\\
+\\
+Besides, the function \textit{freq2speed}, mapping from one data type to the other, is defined as follows:\\
+\\
+\textit{freq2speed: Freq $\rightarrow$ Speed};\\
+
+The external actions together with their direction, in or out, are shown in Figure 1: 
+\\
+\\
+\\
+
+% Insert graphic%
+\begin{figure}[h]
+	\centering
+	\includegraphics[scale=0.9]{pictures/drawing1.pdf}
+	\caption{An overview of the external actions and their directions}
+\end{figure}
+
+
+\clearpage
+
+\newpage
+
+\section{Requirements expressed in terms of actions}
+
+In this section, the requirements listed in section 3 will be translated in terms of the actions described in section 4. Note that the following variables will be used:\\
+\\
+
+
+
+
+
+\textit{f,f1,f2,fOld: Freq} \\
+
+\textit{v,v1,v2: Speed} \\
+
+
+\begin{enumerate}
+	\item
+	\begin{enumerate}
+	
+	\item Between a \stopATP action and a \startATP action, the actions \bellOn, \bellOff, \brakesOn, \brakesOff and \showSpeedLimit{v} should not take place.
+	\end{enumerate}
+    \item 
+    \begin{enumerate}
+    	\item Whenever there is a \showSpeedLimit{v1} action followed by some actions which are not \stopATP and then followed by an action \getSpeed{v2}; if and only if $v2>v1$, then after a finite number of steps a \bellOn action will take place except that a \showSpeedLimit{v1} can happen infinitely often in the meantime.
+    	
+    	\item Whenever there is a \showSpeedLimit{v1} action followed by some actions which are not \stopATP and then followed by an action \getSpeed{v2}; if and only if $v2 \leq v1$, then after a finite number of steps a \bellOff action will take place except that a \showSpeedLimit{v1} can happen infinitely often in the meantime.
+			
+			\item Whenever there is a \getSpeed{v1} action followed by some actions which are not \stopATP and then followed by an action \showSpeedLimit{v2}; if and only if $ v2 \geq v1$, then after a finite number of steps a \bellOff action will take place except that a \showSpeedLimit{v2} can happen infinitely often in the meantime.
+			
+			\item Whenever there is a \getSpeed{v1} action followed by some actions which are not \stopATP and then followed by an action \showSpeedLimit{v2}; if and only if $v2 < v1$, then after a finite number of steps a \bellOn action will take place except that a \showSpeedLimit{v2} can happen infinitely often in the meantime.
+    	
+    \end{enumerate}
+		\item
+		\begin{enumerate}
+		 
+    \item Whenever an action  \getPulseFrequency{fOld} takes place, followed by some actions which are not \stopATP, followed by an action \getPulseFrequency{f}, then after a finite number of steps, an action \showSpeedLimit{freq2speed(f)} or \showSpeedLimit{s0} will happen, except that a \showSpeedLimit{freq2speed(fOld)} action can happen infinitely often in the meantime.
+		\end{enumerate}
+		
+		\item 
+    \begin{enumerate}
+
+    \item No action \showSpeedLimit{s0} will happen if there hasn't been a previous \lightRed action.
+		
+		\item Whenever an action \lightRed happens, then after a finite number of steps an action \showSpeedLimit{s0} or an action \stopATP will follow, except that an action \showSpeedLimit{v} can happen infinitely often in the meantime.
+		 \end{enumerate}
+		
+		\item 
+    \begin{enumerate}
+
+    \item Whenever an action \showSpeedLimit{v1}, followed by some actions which are not \stopATP, followed by \getSpeed{v2} followed by some actions which are not \stopATP, followed by an action \timeOut, then if and only if $v2>v1$, an action \brakesOn will eventually happen, except that an action \showSpeedLimit{v1} can happen infinitely often in the meantime.
+		
+		\item Whenever an action \getSpeed{v1}, followed by some actions which are not \stopATP, followed by \showSpeedLimit{v2}, followed by some actions which are not \stopATP, followed by an action \timeOut, then if and only if $v2<v1$, an action \brakesOn will eventually happen except, that an action \showSpeedLimit{v2} can happen infinitely often in the meantime.
+		
+		 \end{enumerate}
+
+		\item 
+    \begin{enumerate}
+		
+    \item Whenever there is a  \brakesOn action, a \brakesOff action cannot happen unless there is a \getSpeed{s0} action. 
+		
+		\item Whenever there is a  \brakesOn action, a \brakesOff action cannot happen unless there is a \resetATP action. 
+		
+		\end{enumerate}
+	\item
+    \begin{enumerate}
+		
+		\item Whenever there is at least one \getSpeed{s0}action, followed by no \getSpeed{v} actions, followed by a \resetATP action, then after a finite number of steps, a \brakesOff action will happen.
+		
+		\item Whenever there is at least one \getSpeed{s0} action, followed by no \getSpeed{v} actions, followed by a \resetATP action, then after a finite number of steps, a \bellOff action will happen.
+		\end{enumerate}
+		\item
+		\begin{enumerate}
+		\item Whenever an action \getSpeed{s0} occurs, then if no other \getSpeed{v} action happens, there is a possibility for a \resetATP action to happen
+		\end{enumerate}
+		\item
+		\begin{enumerate}
+		\item There is always a finite sequence of actions after which the action \getPulseFrequency{f} is possible.
+		\item There is always a finite sequence of actions after which the action \lightRed is possible.
+		\item There is always a finite sequence of actions after which the action \lightGreen is possible.
+	  \item After a \startATP action, there is a sequence of no \stopATP actions after which the action\getSpeed{v} is possible.
+		\item After a \startATP action, there is a sequence of no \stopATP actions after which the action\stopATP is possible.
+		
+		\end{enumerate}
+
+		
+	\item
+    \begin{enumerate}		
+		 \item There is no deadlock
+
+	\end{enumerate}
+\newpage
+\end{enumerate}
+
+\section{Architecture}
+
+The ATP consists of three parallel components, namely the ATP++1, the ATP++2 and the GATP. These components communicate with each other and share relevant information. They are organized in such a way that the communication between the three components of the system is very simple. They have the following tasks:\\
+
+
+The ATP++1 is the component in charge of reading the signal from the antenna. It gets the frequency of the signal, looks up the corresponding speed limit and sends it to GATP. \\
+
+
+The ATP++2 is the component in charge of detecting the signal from the beacon. Thus, it knows if the traffic light is red or green. If the traffic light is red, it will tell the GATP to override a zero km/h speed limit that will finish when the green light is detected. \\
+
+
+The GATP is the component in charge of processing the information from the ATP++1 and from the ATP++2 and sending the external actions. It will calculate whether the train is driving at a two high speed and it will react accordingly. \\
+
+Figure 2 in the following section shows the different components of the system.
+
+
+
+\newpage
+
+
+\section{List of internal actions}
+
+The following table shows all the internal actions together with a short description and the both the source and destination component:
+
+
+\begin{table}[!hbp]
+	\centering
+	\begin{adjustwidth}{-2.3cm}{}
+	\begin{tabular}{|l|l|l|l|l|}
+		
+		\hline
+		\textbf{No.} & \textbf{Name (data type)} & \textbf{Description} & \textbf{Source} & \textbf{Destination} \\
+		\hline
+		1 & \transmitSpeedLimit{Speed} & The current speed limit & ATP++1 & GATP\\
+		  & & according to track frequency & & \\
+		\hline
+		2 & \transmitRed & Zero km/h override  & ATP++2 & GATP\\
+			& & because of red Light & & \\
+		\hline
+		3 & \transmitGreen & Stop override & ATP++2 & GATP \\
+			& & because of green Light & & \\
+		\hline		
+	\end{tabular}
+	\end{adjustwidth}
+	\caption{List of external actions}
+\end{table}
+
+Figure 2 shows the internal architecture of the system and the possible communications between the components. \\
+
+
+\begin{figure}[h!]
+	\centering
+	\includegraphics[scale=0.9]{pictures/drawing2.pdf}
+	\caption{An overview of the internal architecture and communications}
+\end{figure} 
+
+Note that the numbers in Figure 2 refer to the number of the internal action in table 2.
+
+
+
+\newpage
+
+\section{Model of the system}
+
+
+% //Model for system validation//
+
+sort \\
+
+	Mode = struct ON?is$\_$on$\mid$OFF?is$\_$off;                             \textit{\%\% Two operating modes}\\
+	
+	Light = struct GREEN?is$\_$green$\mid$RED?is$\_$red;                      \textit{\%\% The light can be green or red}\\
+	
+	Bellstate = struct SOUND?is$\_$sounded$\mid$SILENCE?is$\_$silenced;       \textit{\%\% The bell can be on or off}\\
+	
+	Brakestate = struct LOCKED?is$\_$applied$\mid$FREE?is$\_$free;           \textit{\%\% The brakes can be applied or released} \\  
+				
+	Step = struct t0$\mid$t1$\mid$t2$\mid$t3$\mid$t4$\mid$t5$\mid$t6$\mid$t7;   \textit{\%\% The steps used in the GATP}\\
+	
+	Speed = struct s0$\mid$s40$\mid$s60$\mid$s80$\mid$s100$\mid$s140;         \textit{\%\% Speed can be either 0, 40, 60, 80, 100 or 140} \\
+	
+	Freq = struct  f0$\mid$f40$\mid$f60$\mid$f80$\mid$f100$\mid$f140$\mid$specF;    \textit{\%\% Frequency can be 40, 60, 80, 100, 140 or the special frequency}\\
+
+
+map \\
+	freq2speed: Freq $->$ Speed;                        \textit{\%\% Function that transforms Freq to Speed}\\
+	vel: Speed $->$ Nat;                                \textit{\%\% Function that transforms Speed to an actual natural number}   \\
+	next: Step $->$ Step;                               \textit{\%\% Function that has an input of type step and an output of type step}\\
+
+eqn\\
+
+	freq2speed(f0) = s40;                             \textit{\%\% Define the mapping freq2speed}\\
+	freq2speed(f40) = s40;  \\                          
+	freq2speed(f60) = s60;   \\
+	freq2speed(f80) = s80;\\
+	freq2speed(f100) = s100;\\
+	freq2speed(f140) = s140;\\
+	freq2speed(specF) = s140; \\                         
+	vel(s0) = 0;                                      \textit{\%\% Define the mapping vel}\\
+	vel(s40) = 40;\\
+	vel(s60) = 60;\\
+	vel(s80) = 80;\\
+	vel(s100) = 100;\\
+	vel(s140) = 140;\\
+	next(t0) = t1;                                    \textit{\%\% Define the mapping step}\\
+	next(t1) = t2;\\
+	next(t2) = t3;\\
+	next(t3) = t4;\\
+	next(t4) = t5;\\
+	next(t5) = t6;\\
+	next(t6) = t7;\\
+	next(t7) = t0;\\
+
+
+act        \textit{\%\% The different actions are defined} \\
+
+	\textit{\%\% Actions of the ATP1}\\
+
+	sendSpeedLimit : Speed; \\
+	getPulseFrequency : Freq; \\
+	
+	\textit{\%\% Actions of the ATP2}\\
+	
+	lightGreen, sendGreen, lightRed, sendRed; \\
+	
+	\textit{\%\% Ations of the GATP}\\
+
+	startATP,stopATP,requestReset,timeOut; \\
+	receiveGreen, receiveRed;\\
+	receiveSpeedLimit, getSpeed : Speed;\\
+	bellOn,bellOff,brakesOn,brakesOff, resetATP;\\
+	showSpeedLimit : Speed;\\
+	overSpeed, noResponse;\\
+
+	\textit{\%\% Multi actions}\\
+	transmitGreen, transmitRed;\\
+	transmitSpeedLimit : Speed;\\
+
+
+proc\\
+
+	\textit{\%\% The ATP++1 component is responsible for receiving the pulse frequency from the track and then sending the appropriate speed limit to GATP.}\\
+	ATP1 = \\
+		\textit{\%\% We have to be prepared to receive any frequency}\\
+		sum f:Freq . (getPulseFrequency(f) . sendSpeedLimit(freq2speed(f))) . ATP1; \\
+	
+	 
+	\textit{\%\% The ATP++2 component is responsible for receiving the light signals, either red or green. It then has to send a message to GATP so it can respond appropriately.}\\
+	ATP2(light:Light) = \\
+		\textit{\%\% If the light is green, then we are ready to receive the lightRed signal}\\
+		(is\_green(light)) \\
+			$->$ lightRed . sendRed . ATP2(RED)\\
+		+\\
+		\textit{\%\%If the light is red, then we are ready to receive the lightGreen signal}\\
+		(is\_red(light))\\
+			$->$ lightGreen . sendGreen . ATP2(GREEN);\\
+				
+
+	 \textit{\%\% The GATP will receive inputs from ATP1 and ATP2 and will have to react accordingly. It has six parameters: mode (it can be on or off), step (explained later), light (the traffic light), vmax (the speed limit), vtrain (the speed of the train) and bell (the state of the bell, it can be ringing or silent). In order to make possible that the GATP will listen to both of them, a step parameter is defined to guarantee that in each cycle it will listen to both the ATP1 and ATP2 in case they have to transmit something}\\
+	
+	GATP(mode:Mode, step:Step, light:Light, vmax:Speed, vtrain:Speed, bell:Bellstate) = \\
+
+		\textit{\%\% If the GATP is turned off, then we are only ready to receive the startAPT signal}\\
+		(is\_off(mode)) \\
+			$->$ startATP . GATP(ON, t0, light, vmax, vtrain, bell)\\
+
+		\textit{\%\% Else we can do all the other things} \\
+			$<>$ ( \\
+				\textit{\%\% In step zero, it will listen to a possible red light signal or it will show the speed limit. In case of red signal, the speed limit will be set to zero} \\
+				(step $==$ t0) $->$ (\\
+					receiveRed . showSpeedLimit(s0) . GATP(mode,next(step),RED,s0,vtrain,bell)\\
+					+\\
+					showSpeedLimit(vmax) . GATP(mode,next(step),light,vmax,vtrain,bell)\\
+					)\\
+				+\\
+				\textit{\%\% In step one, it will listen to a possible green light signal or it will show the speed limit} \\
+				(step $==$ t1) $->$ ( \\
+					receiveGreen . GATP(mode,next(step),GREEN,vmax,vtrain,bell)\\
+					+\\
+					showSpeedLimit(vmax) . GATP(mode,next(step),light,vmax,vtrain,bell)\\
+					)\\
+				+\\
+     \textit{\%\% In step two, it will receive a speed limit and show it or it will show the speed limit}\\ 
+				(step $==$ t2) $->$ (\\
+					sum vNew:Speed . (\\
+						receiveSpeedLimit(vNew) . showSpeedLimit(vNew) . GATP(mode,next(step), light,vNew,vtrain,bell)\\
+						)\\
+					+\\
+					showSpeedLimit(vmax) . GATP(mode,next(step),light,vmax,vtrain,bell)\\
+					)\\
+				+\\
+				\textit{\%\% In step three it will get the current speed of the train}\\
+				(step $==$ t3) $->$ (\\
+					sum vNew:Speed . (\\
+						getSpeed(vNew) . GATP(mode,next(step),light,vmax,vNew,bell)\\
+						)\\
+					)\\
+				+\\
+	\textit{\%\% In step four, it will check the speed of the train and the speed limit and decide if the bell should be turned on or off}\\
+				(step $==$ t4) $->$ (\\
+					(vel(vmax) $<$ vel(vtrain))\\
+						$->$ bellOn . GATP(mode,next(step),light,vmax,vtrain,SOUND)\\
+					+		\\
+					(vel(vmax) $>=$ vel(vtrain))\\
+						$->$ bellOff . GATP(mode,next(step),light,vmax,vtrain,SILENCE)\\
+					)\\
+				+\\
+\textit{\%\%In step five, there is a timeOut and the bell was ringing then the brakes will be applied, else the speed will be shown}\\
+				(step $==$ t5) $-> $(\\
+				$	timeOut . (is_sounded(bell))$\\
+						$->$ brakesOn . GATP(mode,next(step),light,vmax,vtrain,bell)\\
+						$<>$ showSpeedLimit(vmax) . GATP(mode, next(step), light, vmax, vtrain, bell)\\
+					+		\\
+					showSpeedLimit(vmax) . GATP(mode,next(step),light,vmax,vtrain,bell)\\
+					)\\
+				+\\
+ 
+\textit{\%\%In step six, if there is a reset action and the speed is zero, the brakes will be released and the bell will be turned of}\\
+
+				(step $==$ t6) $->$ (\\
+					resetATP . (vel(vtrain) == 0)\\
+						$->$ brakesOff . bellOff . GATP(mode,next(step),light,vmax,vtrain,SILENCE)\\
+						$<>$ showSpeedLimit(vmax) . GATP(mode, next(step), light, vmax, vtrain, bell)\\
+					+		\\
+					showSpeedLimit(vmax) . GATP(mode,next(step),light,vmax,vtrain,bell) \\
+					)\\
+				+\\
+\textit{\%\% In step seven, the ATP can be stopped, else it will show the speed limit}\\
+				(step $==$ t7) $->$ (\\
+					stopATP . GATP(OFF,next(step),light,vmax,vtrain,bell)\\
+					+\\
+					showSpeedLimit(vmax) . GATP(mode,next(step),light,vmax,vtrain,bell)\\
+					)\\
+			)\\
+		;\\
+	
+		
+init     \\                                                 
+	hide({ \\
+	transmitSpeedLimit, \\
+	transmitGreen,\\
+	transmitRed\\
+	},	\\
+
+	allow({ \\
+		startATP, stopATP, requestReset, \\
+		lightGreen, lightRed, transmitGreen, transmitRed,\\
+		brakesOn, brakesOff, resetATP,\\
+		getPulseFrequency, transmitSpeedLimit,\\
+		getSpeed, showSpeedLimit,\\
+		bellOn, bellOff,\\
+		timeOut,overSpeed,noResponse\\
+		},\\
+	comm( \\
+		{ \\
+		sendSpeedLimit$\mid$receiveSpeedLimit $->$ transmitSpeedLimit, \\
+		sendGreen$\mid$receiveGreen $->$ transmitGreen, \\
+		sendRed$\mid$receiveRed $->$ transmitRed \\
+		}, \\
+
+
+		GATP(OFF,t0,GREEN,s40,s0,SILENCE) $\mid$$\mid$ ATP1 $\mid$$\mid$ ATP2(GREEN) \\
+	))); \\
+
+	
+
+
+
+
+\newpage
+
+\section{Requirements expressed in modal formulas}
+
+
+This section contains a list of the initial requirements translated into modal formulas:
+\begin{enumerate}
+\item
+\begin{enumerate}
+\item $forall _{status:TrainSensData}.[true^* . TrainSensData(arrives).\overline{TrainSensData(broken)^*}.bellOn]false$\\
+\item $[stopATP.\overline{startATP^*}.bellOff]false$\\
+\item $[stopATP.\overline{startATP^*}.brakesOn]false$\\
+\item $[stopATP.\overline{startATP^*}.brakesOff]false$\\
+\item $\forall _{ v1:Speed} [stopATP.\overline{startATP^*}.showSpeedLimit(v)]false$\\
+\end{enumerate}
+
+\item
+\begin{enumerate}
+\item $\forall _{ v1,v2:Speed} . [true^* . showSpeedLimit(v1) . \overline{stopATP^*} . getSpeed(v2)](v2>v1)\rightarrow \mu X . \nu Y .$
+$ ([\overline{bellOn}] X \bigwedge <true> true) \bigvee ([showSpeedLimit(v1)] Y \bigwedge <true> true)$\\
+\item $\forall _{ v1,v2:Speed} . [true^* . showSpeedLimit(v1) . \overline{stopATP^*} . getSpeed(v2)](v2<=v1)\rightarrow \mu X . \nu Y .$
+$ ([\overline{bellOff}] X \bigwedge <true> true) \bigvee ([showSpeedLimit(v1)] Y \bigwedge <true> true)$\\
+\item $\forall _{ v1,v2:Speed} . [true^* . getSpeed(v1) . \overline{stopATP^*} . showSpeedLimit(v2)](v2>=v1)\rightarrow \mu X . \nu Y .$
+$ ([\overline{bellOff}] X \bigwedge <true> true) \bigvee ([showSpeedLimit(v2)] Y \bigwedge <true> true)$\\
+\item $\forall _{ v1,v2:Speed} . [true^* . getSpeed(v1) . \overline{stopATP^*} . showSpeedLimit(v2)](v2<v1)\rightarrow \mu X . \nu Y .$
+$ ([\overline{bellOn}] X \bigwedge <true> true) \bigvee ([showSpeedLimit(v2)] Y \bigwedge <true> true)$\\
+\end{enumerate}
+\item $\forall _{f,fOld:Freq} . [true^* . getPulseFrequency(fOld) . \overline{stopATP^*} . getPulseFrequency(f)]$\\
+$ \mu X . \nu Y . ([\overline{showSpeedLimit(freq2speed(f))} \bigvee \overline{showSpeedLimit(s0)}] X \bigwedge <true> true) \bigvee ([showSpeedLimit(freq2speed(fOld))] Y \bigwedge <true> true)$\\
+\\
+\item
+\begin{enumerate}
+\item $[\overline{lightRed^*} . showSpeedLimit(s0)] false$\\
+\item $\forall _{v:Speed} . [true^* . lightRed] \mu X . \nu Y .([\overline{showSpeedLimit(s0)} \bigwedge \overline{stopATP}] X$\\
+$ \bigwedge <true> true) \bigvee ([showSpeedLimit(v)] Y \bigwedge <true> true)$\\
+\\
+\end{enumerate}
+\item
+\begin{enumerate}
+\item $\forall _{v1,v2 : Speed} . [ true^* . showSpeedLimit(v1) . \overline{stopATP^*} . getSpeed(v2) . \overline{stopATP^*} .$
+\\
+$ timeOut ] (v2>v1) \Rightarrow  \mu X . \nu Y . ([\overline{brakesOn \bigwedge}$\\
+$ \overline{showSpeedLimit(v1)}] X ) \bigwedge ( [showSpeedLimit(v1)] Y \bigvee <true> true)$\\
+\item $\forall _{v1,v2: Speed} . [ true^* . getSpeed(v1) .\overline{stopATP^*} . showSpeedLimit(v2) . \overline{stopATP^*} .$\\
+$ timeOut ] (v2<v1) \Rightarrow \mu X . \nu Y . ([\overline{brakesOn}] X \bigvee <true> true) \bigwedge$\\ 
+$([showSpeedLimit(v2)] Y \bigvee <true> true)$\\
+\end{enumerate}
+\item
+\begin{enumerate}
+\item $[true^* . brakesOn . \overline{getSpeed(s0)}^* . brakesOff] false$\\
+\item $[true^* . brakesOn . \overline{resetATP}^* . brakesOff] false$\\
+\end{enumerate}
+\item
+\begin{enumerate}
+\item $\forall _{v:Speed} . [true^* . getSpeed(s0)^{+}. \overline{getSpeed(v)^*} . resetATP \mu X .([\overline{brakesOff}] X \bigwedge <true> true)$\\
+\item $\forall _{v:Speed} . [true^* . getSpeed(s0)^{+} . \overline{getSpeed(v)^*} . resetATP \mu X .([\overline{bellOff}] X \bigwedge <true> true)$\\
+\end{enumerate}
+\item
+\begin{enumerate}
+\item $\forall _{v:Speed} .[true^* . getSpeed(s0)]<[\overline{getSpeed(v)}^*.resetATP> true$\\
+\end{enumerate}
+\item
+\begin{enumerate}
+\item $\forall _{f:Freq} . [true^*] \mu X . (<true> X \bigwedge <getPulseFrequency(f)> true)$\\
+\item $[true^*] \mu X . (<true> X \bigwedge <lightRed> true)$\\
+\item $[true^*] \mu X . (<true> X \bigwedge <lightGreen> true)$\\
+\item $\forall _{v:Speed} . [true^*] \mu X . (<\overline{stopATP^*}> X \bigwedge <getSpeed(v)> true)$\\
+\item $[true^*] \mu X . (<\overline{stopATP^*}> X \bigwedge <stopATP> true)$\\
+\item $[ true^*] \mu X . (<\overline{startATP^*}> X \bigwedge <startATP> true)$\\
+\end{enumerate}
+\item
+\begin{enumerate}
+\item $[ true^*]<true>true$
+\end{enumerate}
+\end{enumerate}
+
+% how to write down the mathematics formulas %
+
+\newpage
+
+\section{Verification}
+
+The safety requirements were translated into modal formulas in order to verify them. Each of them will be checked by using the mcrl2 toolset.  The verification process follows the following steps: \\
+\begin{enumerate} 
+	\item Install the mcrl2 toolset. \\
+
+    \item Save the model with .mcrl2 extension (f.x. model.mcrl2). \\
+
+    \item Save all the modal formulas with .mcf extension (f.x. req.mcf). \\
+
+    \item Comment all the formulas except the one that will be verified. \\
+
+    \item  Create a parameterized boolean equation system (req.pbes) with the command: lps2pbes model.mcrl2 -f req.mcf req.pbes \\
+
+    \item Check the validity of the parameterized boolean equation system:
+bpes2bool req.pbes \\
+
+    \item If the formula is valid, an output ‘true’ will be obtained
+
+
+
+
+\end{enumerate}
+
+\newpage
+\section{Conclusions}
+
+All the fomulated safety requirements listed in Section 8 have got \emph{true} outputs in the verification process by using the mcrl2 toolset. Therefore, the Automatic Train Protection system satisfies with all the requirements. The system was thus verified.
+
+\newpage
+\section{References}
+\begin{enumerate}
+\item J. F. Groote and M. R. Mousavi Modelling and Analysis of Communicating Systems 2013. \\
+\item mCRL2 201210.1 documentation 
+\url{http://www.mcrl2.org/release/user_manual/user.html}
+\end{enumerate}
+
+
+
+\end{document}
